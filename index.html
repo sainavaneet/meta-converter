@@ -51,32 +51,15 @@
 
   <footer>Made with piexifjs • Works offline after first load</footer>
 
+<script src="https://cdn.jsdelivr.net/npm/piexifjs"></script>
 <script>
-function readFileAsDataURL(file) {
+async function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-}
-
-function dataURLToArrayBuffer(dataURL) {
-  const base64 = dataURL.split(",")[1];
-  const binary = atob(base64);
-  const len = binary.length;
-  const buffer = new ArrayBuffer(len);
-  const view = new Uint8Array(buffer);
-  for (let i = 0; i < len; i++) view[i] = binary.charCodeAt(i);
-  return buffer;
-}
-
-function arrayBufferToDataURL(buffer, mime) {
-  let binary = "";
-  const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  const base64 = btoa(binary);
-  return `data:${mime};base64,${base64}`;
 }
 
 const fileInput = document.getElementById("fileInput");
@@ -94,41 +77,39 @@ fileInput.addEventListener("change", async (e) => {
 
 btn.addEventListener("click", async () => {
   const file = fileInput.files?.[0];
-  if (!file) { alert("Please choose a JPEG image first."); return; }
-  if (!/jpe?g$/i.test(file.name)) {
-    if (!/image\/jpeg/.test(file.type)) { alert("Please use a JPEG file."); return; }
-  }
+  if (!file) { alert("Please choose an image first."); return; }
 
-  statusEl.textContent = "Embedding EXIF…";
+  statusEl.textContent = "Processing and converting to JPEG...";
 
-  const dataURL = await readFileAsDataURL(file);
-  const jpegData = atob(dataURL.split(",")[1]);
+  const img = new Image();
+  img.src = await readFileAsDataURL(file);
+  await img.decode();
 
+  // Convert to JPEG
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+  const jpegDataURL = canvas.toDataURL("image/jpeg", 0.95);
+
+  // Embed EXIF
   let exifObj = {"0th":{}, "Exif":{}, "GPS":{}, "Interop":{}, "1st":{}};
-
-  // Set fields from inputs
-  const make = document.getElementById("make").value || "Apple";
-  const model = document.getElementById("model").value || "iPhone 15 Pro Max";
-  const lens = document.getElementById("lens").value || "Main Camera (24 mm, f/1.78, 48 MP)";
-
-  exifObj["0th"][piexif.ImageIFD.Make] = make;
-  exifObj["0th"][piexif.ImageIFD.Model] = model;
-  exifObj["Exif"][piexif.ExifIFD.LensModel] = lens;
-
+  exifObj["0th"][piexif.ImageIFD.Make] = "Apple";
+  exifObj["0th"][piexif.ImageIFD.Model] = "iPhone 15 Pro Max";
+  exifObj["Exif"][piexif.ExifIFD.LensModel] = "Main Camera (24 mm, f/1.78, 48 MP)";
   const exifBytes = piexif.dump(exifObj);
-  const inserted = piexif.insert(exifBytes, dataURL);
+  const newDataURL = piexif.insert(exifBytes, jpegDataURL);
 
-  // trigger download
+  // Download
   const a = document.createElement("a");
-  a.href = inserted;
-  const name = file.name.replace(/\.jpe?g$/i, "") + "_exif.jpeg";
-  a.download = name;
-  document.body.appendChild(a);
+  a.href = newDataURL;
+  a.download = file.name.replace(/\.[^.]+$/, "") + "_exif.jpeg";
   a.click();
-  a.remove();
 
-  statusEl.textContent = `Done! Downloaded ${name}`;
+  statusEl.textContent = "Done! Downloaded as JPEG with EXIF.";
 });
 </script>
+
 </body>
 </html>
