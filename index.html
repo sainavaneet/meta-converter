@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPhone 15 Pro Max EXIF Embedder</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 2rem; }
+    .card { max-width: 720px; margin: auto; border: 1px solid #ddd; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 6px rgba(0,0,0,.05); }
+    label { display:block; margin-top: 1rem; font-weight: 600; }
+    input[type="text"] { width: 100%; padding: .5rem; border: 1px solid #ccc; border-radius: 8px; }
+    #preview { max-width: 100%; margin-top: 1rem; border-radius: 8px; }
+    button { margin-top: 1rem; padding: .75rem 1rem; border: 0; border-radius: 10px; cursor: pointer; }
+    .primary { background: black; color: white; }
+    .muted { color: #666; font-size: .9rem; }
+    footer { text-align:center; margin-top: 2rem; color:#777; }
+    .row { display:flex; gap: 1rem; }
+    .row > div { flex:1; }
+  </style>
+  <!-- piexifjs: client-side EXIF editing for JPEG -->
+  <script src="https://cdn.jsdelivr.net/npm/piexifjs"></script>
+</head>
+<body>
+  <div class="card">
+    <h2>Embed iPhone 15 Pro Max EXIF</h2>
+    <p class="muted">Upload a JPEG. This page will add EXIF fields (Make/Model/LensModel) entirely in your browser—no server upload.</p>
+
+    <label>Choose JPEG image</label>
+    <input id="fileInput" type="file" accept="image/jpeg,image/jpg" />
+
+    <div class="row">
+      <div>
+        <label>Make</label>
+        <input id="make" value="Apple" />
+      </div>
+      <div>
+        <label>Model</label>
+        <input id="model" value="iPhone 15 Pro Max" />
+      </div>
+    </div>
+    <label>Lens Model</label>
+    <input id="lens" value="Main Camera (24 mm, f/1.78, 48 MP)" />
+
+    <img id="preview" alt="Preview will appear here" />
+
+    <div>
+      <button class="primary" id="processBtn">Embed EXIF & Download</button>
+    </div>
+    <p id="status" class="muted"></p>
+  </div>
+
+  <footer>Made with piexifjs • Works offline after first load</footer>
+
+<script>
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function dataURLToArrayBuffer(dataURL) {
+  const base64 = dataURL.split(",")[1];
+  const binary = atob(base64);
+  const len = binary.length;
+  const buffer = new ArrayBuffer(len);
+  const view = new Uint8Array(buffer);
+  for (let i = 0; i < len; i++) view[i] = binary.charCodeAt(i);
+  return buffer;
+}
+
+function arrayBufferToDataURL(buffer, mime) {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  const base64 = btoa(binary);
+  return `data:${mime};base64,${base64}`;
+}
+
+const fileInput = document.getElementById("fileInput");
+const preview = document.getElementById("preview");
+const statusEl = document.getElementById("status");
+const btn = document.getElementById("processBtn");
+
+fileInput.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const url = await readFileAsDataURL(file);
+  preview.src = url;
+  statusEl.textContent = `Loaded: ${file.name} (${Math.round(file.size/1024)} KB)`;
+});
+
+btn.addEventListener("click", async () => {
+  const file = fileInput.files?.[0];
+  if (!file) { alert("Please choose a JPEG image first."); return; }
+  if (!/jpe?g$/i.test(file.name)) {
+    if (!/image\/jpeg/.test(file.type)) { alert("Please use a JPEG file."); return; }
+  }
+
+  statusEl.textContent = "Embedding EXIF…";
+
+  const dataURL = await readFileAsDataURL(file);
+  const jpegData = atob(dataURL.split(",")[1]);
+
+  let exifObj = {"0th":{}, "Exif":{}, "GPS":{}, "Interop":{}, "1st":{}};
+
+  // Set fields from inputs
+  const make = document.getElementById("make").value || "Apple";
+  const model = document.getElementById("model").value || "iPhone 15 Pro Max";
+  const lens = document.getElementById("lens").value || "Main Camera (24 mm, f/1.78, 48 MP)";
+
+  exifObj["0th"][piexif.ImageIFD.Make] = make;
+  exifObj["0th"][piexif.ImageIFD.Model] = model;
+  exifObj["Exif"][piexif.ExifIFD.LensModel] = lens;
+
+  const exifBytes = piexif.dump(exifObj);
+  const inserted = piexif.insert(exifBytes, dataURL);
+
+  // trigger download
+  const a = document.createElement("a");
+  a.href = inserted;
+  const name = file.name.replace(/\.jpe?g$/i, "") + "_exif.jpeg";
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  statusEl.textContent = `Done! Downloaded ${name}`;
+});
+</script>
+</body>
+</html>
