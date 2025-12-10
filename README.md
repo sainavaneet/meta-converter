@@ -21,4 +21,4 @@ The edited image is immediately downloaded
 
 ## Notes
 - Works offline after the first load (the page references `piexifjs` from a CDN; for fully-offline use, download the library and serve it locally).
-- Only JPEG is supported for EXIF
+- Only JPEG is supported for EXI
