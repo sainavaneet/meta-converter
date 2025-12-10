@@ -1,7 +1,7 @@
 # iPhone 15 Pro Max EXIF Embedder (Client-side)
 
 This is a **single-page** website that lets you upload a JPEG and embed these EXIF fields:
-- `Make`: Apple
+- `Make`: Apple device
 - `Model`: iPhone 15 Pro Max
 - `LensModel`: Main Camera (24 mm, f/1.78, 48 MP)
 
