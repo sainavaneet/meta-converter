@@ -6,7 +6,7 @@ This is a **single-page** website that lets you upload a JPEG and embed these EX
 - `LensModel`: Main Camera (24 mm, f/1.78, 48 MP)
 
 Everything runs **in your browser** using [piexifjs]. No server needed.
-The edited image is immediately downloaded.
+The edited image is immediately downloaded
 
 ## How to use
 1. Open `index.html` in any browser.
